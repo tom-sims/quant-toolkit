@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quant-toolkit"
+version = "0.1.0"
+description = "A Python quant research toolkit (models, metrics, portfolio, reports)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Tom Sims" }]
+keywords = ["quant", "finance", "portfolio", "risk", "statistics"]
+dependencies = [
+  "numpy",
+  "pandas",
+  "statsmodels",
+  "scipy",
+  "scikit-learn",
+  "matplotlib",
+  "yfinance",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "ruff",
+  "black",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["quant_research_toolkit*"]
+exclude = ["UNKNOWN*", "untitled*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
