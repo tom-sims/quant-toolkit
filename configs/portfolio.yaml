@@ -1,0 +1,6 @@
+weights:
+  SPY: 0.35
+  AAPL: 0.20
+  MSFT: 0.20
+  NVDA: 0.15
+  GLD: 0.10

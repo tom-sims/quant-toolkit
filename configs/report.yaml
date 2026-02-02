@@ -1,0 +1,20 @@
+data:
+  start: "2018-01-01"
+  end: null
+  trading_days: 252
+  price_field: "Adj Close"
+  benchmark_ticker: "SPY"
+  risk_free_annual: 0.02
+  cache:
+    enabled: true
+    dir: ".cache/qrt"
+    ttl_days: 7
+
+report:
+  var_levels: [0.95, 0.99]
+  var_window: 252
+  rolling_window: 252
+  return_kind: "log"
+  render:
+    md: true
+    html: true
