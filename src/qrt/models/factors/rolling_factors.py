@@ -16,18 +16,27 @@ def rolling_capm_beta(
     window: int = 252,
     min_periods: Optional[int] = None,
 ) -> pd.Series:
-    a, b, rf, _ = align_asset_benchmark_rf(asset_returns, benchmark_returns, risk_free_returns, how="inner", dropna=True)
+    r = pd.concat([asset_returns.rename("a"), benchmark_returns.rename("b")], axis=1).dropna(how="any")
+    if risk_free_returns is not None:
+        rf = risk_free_returns.reindex(r.index).astype(float).ffill().bfill()
+        y = r["a"].astype(float) - rf
+        x = (r["b"].astype(float) - rf).rename("mkt")
+    else:
+        y = r["a"].astype(float)
+        x = r["b"].astype(float).rename("mkt")
 
-    y = a.astype(float)
-    x = pd.DataFrame({"MKT": b.astype(float)})
+    w = int(window)
+    mp = int(min_periods) if min_periods is not None else w
+    if len(y) < mp:
+        return pd.Series(dtype=float, name="beta")
 
-    if rf is not None:
-        y = y - rf.astype(float)
-        x["MKT"] = x["MKT"] - rf.astype(float)
+    params = rolling_ols(y.rename("asset_excess"), x, window=w, add_const=True, min_periods=mp)
+    if "mkt" in params.columns:
+        return params["mkt"].rename("beta")
+    if "x" in params.columns:
+        return params["x"].rename("beta")
+    return pd.Series(dtype=float, name="beta")
 
-    params = rolling_ols(y.rename("asset_excess"), x, window=int(window), add_const=True, min_periods=min_periods)
-    beta = params["MKT"].rename(f"beta_{int(window)}")
-    return beta
 
 
 def rolling_factor_loadings(

@@ -239,7 +239,8 @@ def build_asset_report(
                 TableRef(title="VaR Backtest Table", path=bt_table_path, format="csv"),
                 TableRef(title="Stress Scenarios", path=stress_path, format="csv"),
             ),
-            extras={"backtest": bt_res.as_dict()},
+            extras={"backtest": (bt_res.as_dict() if hasattr(bt_res, "as_dict") else dict(bt_res))},
+
         )
     )
 

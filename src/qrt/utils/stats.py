@@ -170,6 +170,9 @@ def rolling_ols(
     add_const: bool = True,
     min_periods: Optional[int] = None,
 ) -> pd.DataFrame:
+    if isinstance(x, pd.Series):
+        x = x.to_frame()
+
     if not isinstance(y, pd.Series):
         raise TypeError("y must be a pandas Series")
     if not isinstance(x, pd.DataFrame):

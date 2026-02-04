@@ -42,13 +42,25 @@ def var_forecast_series(
 
 
 def var_violations(returns: pd.Series, var_series: pd.Series) -> pd.Series:
-    r, _ = validate_returns(returns, name=returns.name or "returns")
-    df = pd.concat([r.rename("r"), var_series.rename("var")], axis=1).dropna(how="any")
-    if len(df) == 0:
-        raise ValueError("No overlapping data between returns and VaR series")
-    v = (df["r"].astype(float) < df["var"].astype(float)).astype(int)
-    v.name = "violation"
-    return v
+    r = returns.dropna().astype(float)
+    v = var_series.dropna().astype(float)
+
+    if len(r) == 0 or len(v) == 0:
+        raise ValueError("Empty returns or VaR series")
+
+    idx = r.index.intersection(v.index)
+    if len(idx) == 0:
+        v2 = v.shift(1)
+        idx = r.index.intersection(v2.index)
+        if len(idx) == 0:
+            raise ValueError("No overlapping data between returns and VaR series")
+        v = v2
+
+    r = r.loc[idx]
+    v = v.loc[idx]
+
+    return (r < -v).astype(int)
+
 
 
 def kupiec_uc_test(violations: pd.Series, expected_rate: float) -> Tuple[float, float]:
@@ -89,6 +101,13 @@ def backtest_var(
     test: str = "kupiec_uc",
 ) -> Tuple[BacktestResult, pd.Series, pd.Series]:
     r, _ = validate_returns(returns, name=returns.name or "returns")
+    if window is not None and len(r.dropna()) <= int(window) + 5:
+        return (
+            {"error": "insufficient_data", "nobs": int(len(r.dropna())), "window": int(window)},
+            pd.Series(dtype=float),
+            pd.Series(dtype=int),
+        )
+
     l = float(level)
     alpha = 1.0 - l
     forecast = var_forecast_series(
