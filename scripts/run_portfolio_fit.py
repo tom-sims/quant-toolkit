@@ -76,7 +76,6 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--cov-lam", type=float, default=0.94)
     parser.add_argument("--rolling-window", type=int, default=252)
     parser.add_argument("--md", action="store_true")
-    parser.add_argument("--html", action="store_true")
     parser.add_argument("--template-dir", type=str, default=None)
     args = parser.parse_args(argv)
 
@@ -128,17 +127,6 @@ def main(argv: Optional[list[str]] = None) -> int:
             output_dir=out_root / "reports",
         )
         print(str(md_path))
-        wrote_any = True
-
-    if args.html:
-        from qrt.reports.render_html import render_report_html
-
-        _, html_path = render_report_html(
-            report,
-            template_dir=template_dir,
-            output_dir=out_root / "reports",
-        )
-        print(str(html_path))
         wrote_any = True
 
     if not wrote_any:

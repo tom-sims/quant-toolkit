@@ -59,7 +59,9 @@ def var_violations(returns: pd.Series, var_series: pd.Series) -> pd.Series:
     r = r.loc[idx]
     v = v.loc[idx]
 
-    return (r < -v).astype(int)
+    threshold = v.where(v < 0.0, -v)
+    return (r < threshold).astype(int)
+
 
 
 

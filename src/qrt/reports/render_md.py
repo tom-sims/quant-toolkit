@@ -42,11 +42,37 @@ def _format_number(x: Any, digits: int = 4) -> Any:
         return x
     if v != v:
         return "nan"
-    if abs(v) >= 1_000_000:
+    av = abs(v)
+    if av >= 1_000_000:
         return f"{v:,.0f}"
-    if abs(v) >= 1_000:
+    if av >= 1_000:
         return f"{v:,.2f}"
-    return f"{v:.{int(digits)}f}"
+    if av >= 100:
+        return f"{v:,.2f}"
+    if av >= 1:
+        return f"{v:.3f}"
+    if av >= 0.01:
+        return f"{v:.4f}"
+    return f"{v:.6f}"
+
+
+def _format_any(x: Any) -> Any:
+    if x is None:
+        return None
+    if isinstance(x, bool):
+        return x
+    if isinstance(x, int):
+        return x
+    if isinstance(x, float):
+        return _format_number(x)
+    if isinstance(x, str):
+        return x
+    if isinstance(x, dict):
+        return {str(k): _format_any(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [_format_any(v) for v in x]
+    return _format_number(x)
+
 
 
 def _default_markdown(report: Any) -> str:
@@ -159,8 +185,8 @@ def render_report_md(
     tname = template_name
     if tname is None:
         tname = f"{report_type}_report.md.j2"
+    md = ""
 
-        md = ""
     try:
         e = _env(template_dir)
         t = e.get_template(tname)
@@ -168,8 +194,9 @@ def render_report_md(
         md = t.render(report=payload)
         if not str(md).strip():
             md = _default_markdown(report)
-    except Exception:
-        md = _default_markdown(report)
+    except Exception as e:
+        raise
+
 
 
     out_path.write_text(md, encoding="utf-8")

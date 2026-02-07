@@ -124,39 +124,60 @@ def _read_ff_daily_from_zip(content: bytes) -> pd.DataFrame:
     names = z.namelist()
     if len(names) == 0:
         raise ValueError("Empty factors zip")
-    raw = z.read(names[0]).decode("utf-8", errors="ignore").splitlines()
-    lines = [ln.strip() for ln in raw if ln is not None]
-    start_i = None
+
+    raw = z.read(names[0]).decode("utf-8", errors="ignore")
+    lines = [ln.strip() for ln in raw.splitlines() if ln is not None]
+
+    first_data_i = None
     for i, ln in enumerate(lines):
-        if ln.startswith("Date") or ln.startswith("DATE"):
-            start_i = i
+        if "," not in ln:
+            continue
+        head = ln.split(",", 1)[0].strip()
+        if head.isdigit() and len(head) == 8:
+            first_data_i = i
             break
-    if start_i is None:
-        start_i = 0
+    if first_data_i is None:
+        raise ValueError("Could not find any daily factor rows")
 
-    end_i = None
-    for i in range(start_i + 1, len(lines)):
-        if lines[i].startswith("END"):
-            end_i = i
+    header_i = first_data_i - 1 if first_data_i - 1 >= 0 else None
+    header = lines[header_i] if header_i is not None else ""
+    header_parts = [p.strip() for p in header.split(",")] if "," in header else []
+
+    data_rows = []
+    for ln in lines[first_data_i:]:
+        if "," not in ln:
             break
-    block = lines[start_i:end_i] if end_i is not None else lines[start_i:]
-    txt = "\n".join(block)
+        head = ln.split(",", 1)[0].strip()
+        if not (head.isdigit() and len(head) == 8):
+            break
+        data_rows.append(ln)
 
-    df = pd.read_csv(
-        io.StringIO(txt),
-        sep=",",
-        engine="python",
-    )
+    if len(data_rows) == 0:
+        raise ValueError("No daily factor rows found")
 
-    date_col = df.columns[0]
-    df[date_col] = pd.to_datetime(df[date_col].astype(str), format="%Y%m%d", errors="coerce")
-    df = df.dropna(subset=[date_col]).set_index(date_col)
+    if len(header_parts) >= 2 and header_parts[0].lower() in {"date", "dates"}:
+        csv_text = "\n".join([lines[header_i]] + data_rows)
+        df = pd.read_csv(io.StringIO(csv_text), sep=",", engine="python")
+    else:
+        first_parts = [p.strip() for p in data_rows[0].split(",")]
+        ncols = len(first_parts)
+        cols = ["Date"] + [f"F{i}" for i in range(1, ncols)]
+        csv_text = "\n".join([",".join(cols)] + data_rows)
+        df = pd.read_csv(io.StringIO(csv_text), sep=",", engine="python")
+
+    df["Date"] = pd.to_datetime(df["Date"].astype(str), format="%Y%m%d", errors="coerce")
+    df = df.dropna(subset=["Date"]).set_index("Date")
     df = df.apply(pd.to_numeric, errors="coerce") / 100.0
+
     df.index.name = "Date"
     df.columns = [str(c).strip().upper().replace("-", "_") for c in df.columns]
+
     if "MKT_RF" not in df.columns and "MKT-RF" in df.columns:
         df = df.rename(columns={"MKT-RF": "MKT_RF"})
+
     return df.dropna(how="all")
+
+
 
 
 def load_fama_french_factors(
@@ -175,6 +196,13 @@ def load_fama_french_factors(
     r = requests.get(url, timeout=(10, 60))
     r.raise_for_status()
     df = _read_ff_daily_from_zip(r.content)
+
+    if all(c.startswith("F") for c in df.columns):
+        if str(kind).lower().strip() == "ff5" and len(df.columns) >= 6:
+            df.columns = ["MKT_RF", "SMB", "HML", "RMW", "CMA", "RF"][: len(df.columns)]
+        if str(kind).lower().strip() == "ff3" and len(df.columns) >= 4:
+            df.columns = ["MKT_RF", "SMB", "HML", "RF"][: len(df.columns)]
+
 
     df = df.loc[(df.index >= s) & (df.index <= e)]
     want = ["MKT_RF", "SMB", "HML", "RMW", "CMA", "RF"]

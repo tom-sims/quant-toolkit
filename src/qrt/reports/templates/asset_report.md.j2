@@ -1,0 +1,58 @@
+{% macro render_value(v, indent=0) -%}
+{%- set pad = "  " * indent -%}
+{%- if v is mapping -%}
+{%- for kk, vv in v.items() -%}
+{{ pad }}- **{{ kk }}**:{% if vv is mapping or (vv is sequence and vv is not string) %}{{ "\n" }}{{ render_value(vv, indent + 1) }}{% else %} {{ vv|num(6) if vv is number else vv }}{% endif %}
+{%- endfor -%}
+{%- elif v is sequence and v is not string -%}
+{%- for item in v -%}
+{{ pad }}- {{ item|num(6) if item is number else item }}
+{%- endfor -%}
+{%- else -%}
+{{ pad }}- {{ v|num(6) if v is number else v }}
+{%- endif -%}
+{%- endmacro %}
+
+# {{ report.meta.report_type|upper }} — {{ report.meta.subject }}
+
+## Meta
+{% for k, v in report.meta.items() %}
+- **{{ k }}**:{% if v is mapping or (v is sequence and v is not string) %}{{ "\n" }}{{ render_value(v, 1) }}{% else %} {{ v|num(6) if v is number else v }}{% endif %}
+{% endfor %}
+
+{% for sec in report.sections %}
+## {{ sec.title }}
+
+{% if sec.text %}
+{{ sec.text }}
+{% endif %}
+
+{% if sec.metrics %}
+### Metrics
+{% for k, v in sec.metrics.items() %}
+- **{{ k }}**:{% if v is mapping or (v is sequence and v is not string) %}{{ "\n" }}{{ render_value(v, 1) }}{% else %} {{ v|num(6) if v is number else v }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if sec.figures %}
+### Figures
+{% for f in sec.figures %}
+- {{ f.title }}: `{{ f.path }}`
+{% endfor %}
+{% endif %}
+
+{% if sec.tables %}
+### Tables
+{% for t in sec.tables %}
+- {{ t.title }}: `{{ t.path }}`
+{% endfor %}
+{% endif %}
+
+{% if sec.extras %}
+### Extras
+{% for k, v in sec.extras.items() %}
+- **{{ k }}**:{% if v is mapping or (v is sequence and v is not string) %}{{ "\n" }}{{ render_value(v, 1) }}{% else %} {{ v|num(6) if v is number else v }}{% endif %}
+{% endfor %}
+{% endif %}
+
+{% endfor %}
